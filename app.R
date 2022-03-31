@@ -2,7 +2,8 @@ library(shiny)
 library(DT)
 library(tidyverse)
 library(stringr)
-
+library(ggplot2)
+library(cowplot)
 # appDir = "S:/analysis/dev/2022/wordl/wordlesolver"
 # rsconnect::deployApp(appDir)
 
@@ -10,6 +11,11 @@ library(stringr)
 github_csv <- "https://raw.githubusercontent.com/oyvindbusk/wordlebundle/main/fiveletterwords.csv"
 #fivel_words <- read_delim(github_csv, delim=",",col_select = 'Word')
 fivel_words <- read_delim(github_csv, delim=",",col_select = 'Word')
+fivel_words <- fivel_words %>% mutate(xx = sapply(strsplit(Word, ""), paste, collapse=","))
+fivel_words <- fivel_words %>% separate(xx, into = paste("V", 1:5, sep = "_"), sep = ",", remove=FALSE)
+fivel_words <- fivel_words %>% select(-xx)
+
+
 
 # Funksjoner:
 # Function filter words containing letter
@@ -156,6 +162,7 @@ ui <- fluidPage(
             br(),
             fluidRow(actionButton("show", "Trykk for Ann Gøril-sitat!!")),
             br(),
+            plotOutput("plots"),
             tagList("Koden ligger her:", "https://github.com/oyvindbusk/wordlebundle"),
             br()
     )
@@ -164,9 +171,22 @@ ui <- fluidPage(
 # Definer server logic:
 server <- function(input, output) {
     output$mytable = DT::renderDataTable({
-        combine_filters(tolower(input$included_letters), tolower(input$excluded_letters), tolower(input$included_1), tolower(input$included_2), tolower(input$included_3), tolower(input$included_4), tolower(input$included_5), tolower(input$excluded_1), tolower(input$excluded_2), tolower(input$excluded_3), tolower(input$excluded_4), tolower(input$excluded_5), fivel_words)
+        combine_filters(tolower(input$included_letters), tolower(input$excluded_letters), tolower(input$included_1), tolower(input$included_2), tolower(input$included_3), tolower(input$included_4), tolower(input$included_5), tolower(input$excluded_1), tolower(input$excluded_2), tolower(input$excluded_3), tolower(input$excluded_4), tolower(input$excluded_5), reactive_data() %>% select(Word))
     },options = list(searching = FALSE))
-    #output$text <- renderText({ input$included_letters })
+    
+    reactive_data <- reactive({
+        combine_filters(tolower(input$included_letters), tolower(input$excluded_letters), tolower(input$included_1), tolower(input$included_2), tolower(input$included_3), tolower(input$included_4), tolower(input$included_5), tolower(input$excluded_1), tolower(input$excluded_2), tolower(input$excluded_3), tolower(input$excluded_4), tolower(input$excluded_5), fivel_words)
+    })
+   
+    output$plots <- renderPlot({
+        p1 = ggplot(as.data.frame(table(reactive_data()$V_1)), aes(x=Var1,y = Freq)) + geom_bar(stat = "identity")+theme(axis.title.x = element_blank()) + ggtitle("Posisjon 1")
+        p2 = ggplot(as.data.frame(table(reactive_data()$V_2)), aes(x=Var1,y = Freq)) + geom_bar(stat = "identity")+theme(axis.title.x = element_blank()) + ggtitle("Posisjon 2")
+        p3 = ggplot(as.data.frame(table(reactive_data()$V_3)), aes(x=Var1,y = Freq)) + geom_bar(stat = "identity")+theme(axis.title.x = element_blank()) + ggtitle("Posisjon 3")
+        p4 = ggplot(as.data.frame(table(reactive_data()$V_4)), aes(x=Var1,y = Freq)) + geom_bar(stat = "identity")+theme(axis.title.x = element_blank()) + ggtitle("Posisjon 4")
+        p5 = ggplot(as.data.frame(table(reactive_data()$V_5)), aes(x=Var1,y = Freq)) + geom_bar(stat = "identity")+theme(axis.title.x = element_blank()) + ggtitle("Posisjon 5")
+        plot_grid(plotlist = list(p1,p2,p3,p4,p5), ncol = 2)
+        
+    })
     
     observeEvent(input$show, {
         showModal(modalDialog(
