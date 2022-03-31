@@ -3,10 +3,8 @@ library(DT)
 library(tidyverse)
 library(stringr)
 
-
 # appDir = "S:/analysis/dev/2022/wordl/wordlesolver"
 # rsconnect::deployApp(appDir)
-
 
 # Last inn ordbok med fembokstavers ord
 github_csv <- "https://raw.githubusercontent.com/oyvindbusk/wordlebundle/main/fiveletterwords.csv"
@@ -38,7 +36,6 @@ filter_excluded <- function(excluded_letters, data) {
     return(out_data)
 }
 
-
 filter_include_position <- function(position, ltr, data) {
     return(data %>% filter(substr(Word, position,position) == ltr))
 }
@@ -49,9 +46,6 @@ filter_exclude_position <- function(position, ltr, data) {
     }
     return(data)
 }
-
-
-
 
 combine_filters <- function(included_letters, excluded_letters, incl_1, incl_2, incl_3, incl_4, incl_5, excl_1,excl_2,excl_3,excl_4,excl_5, data) {
     if (nchar(included_letters) != 0) {
@@ -93,9 +87,7 @@ combine_filters <- function(included_letters, excluded_letters, incl_1, incl_2, 
     return(data)
 }
 
-
-
-# Define UI for application that draws a histogram
+# Definer UI:
 ui <- fluidPage(
 
     # Application title
@@ -112,8 +104,6 @@ ui <- fluidPage(
                       label = "Ekskluderte bokstaver:",
                       value = "",
                       width = "200px")),
-                
-                
             ),
             h4("Bokstaver tilstede i posisjon x: (kun en)"),
             fluidRow(
@@ -137,7 +127,6 @@ ui <- fluidPage(
                                    label = "Tilstede posisjon 5:",
                                    value = "",
                                    width = "100px"))
-                
             ),
             h4("Bokstaver IKKE tilstede i posisjon x: (mulig med mer enn en bokstav (uten mellomrom eller komma))"),
             fluidRow(
@@ -172,7 +161,7 @@ ui <- fluidPage(
     )
 )
 
-# Define server logic required to draw a histogram
+# Definer server logic:
 server <- function(input, output) {
     output$mytable = DT::renderDataTable({
         combine_filters(tolower(input$included_letters), tolower(input$excluded_letters), tolower(input$included_1), tolower(input$included_2), tolower(input$included_3), tolower(input$included_4), tolower(input$included_5), tolower(input$excluded_1), tolower(input$excluded_2), tolower(input$excluded_3), tolower(input$excluded_4), tolower(input$excluded_5), fivel_words)
@@ -187,10 +176,7 @@ server <- function(input, output) {
             footer = NULL
         ))
     })
-    
-    
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
