@@ -12,10 +12,8 @@ github_csv <- "https://raw.githubusercontent.com/oyvindbusk/wordlebundle/main/fi
 #fivel_words <- read_delim(github_csv, delim=",",col_select = 'Word')
 fivel_words <- read_delim(github_csv, delim=",",col_select = 'Word')
 fivel_words <- fivel_words %>% mutate(xx = sapply(strsplit(Word, ""), paste, collapse=","))
-fivel_words <- fivel_words %>% separate(xx, into = paste("V", 1:5, sep = "_"), sep = ",", remove=FALSE)
+fivel_words <- fivel_words %>% separate(xx, into = paste("V", 1:5, sep = "_"), sep = ",", remove=FALSE) %>% filter(!V_3 == ".") %>% filter(!V_5 == ".")
 fivel_words <- fivel_words %>% select(-xx)
-
-
 
 # Funksjoner:
 # Function filter words containing letter
@@ -93,6 +91,31 @@ combine_filters <- function(included_letters, excluded_letters, incl_1, incl_2, 
     return(data)
 }
 
+# Funksjon for aa rate ord
+bokstav_funk <- function(ord, t1, t) {
+    sum = 0
+    count = 1
+    l <- length(t[[1]])
+    for (bokstav in strsplit(ord, "")[[1]]) {
+        sum = sum + (t[[which(names(t1) == bokstav),count]]/l)
+        count = count + 1
+    }
+    return(sum)  
+}
+
+# Funksjon for aa:
+# Legg til der det mangler bokstaver i tabell
+utvid_tabell <- function(t){
+  for (i in letters) {
+    if (is.na(t[i])) {
+      t[i] = 0
+    }
+  }
+  return(t)
+}
+
+
+
 # Definer UI:
 ui <- fluidPage(
 
@@ -160,10 +183,15 @@ ui <- fluidPage(
             br(),
             DT::dataTableOutput("mytable"),
             br(),
+            fluidRow(actionButton("forslag", "Trykk for forslag til ord"), textOutput("infotext")), 
+            br(),
+            br(),
+            br(),
             fluidRow(actionButton("show", "Trykk for Ann Gøril-sitat!!")),
             br(),
             plotOutput("plots"),
-            tagList("Koden ligger her:", "https://github.com/oyvindbusk/wordlebundle"),
+            br(),
+            tagList("Koden ligger her: (dette er slengt sammen ganske kjapt - så den er litt subpar..)", "https://github.com/oyvindbusk/wordlebundle"),
             br()
     )
 )
@@ -176,6 +204,9 @@ server <- function(input, output) {
     
     reactive_data <- reactive({
         combine_filters(tolower(input$included_letters), tolower(input$excluded_letters), tolower(input$included_1), tolower(input$included_2), tolower(input$included_3), tolower(input$included_4), tolower(input$included_5), tolower(input$excluded_1), tolower(input$excluded_2), tolower(input$excluded_3), tolower(input$excluded_4), tolower(input$excluded_5), fivel_words)
+    })
+    output$infotext <- renderText({ 
+      "OBS! Ikke trykk på denne før du har filtrert bort noen ord - ellers kan den bruke litt tid. Den foreslår det ordet som utelukker flest andre ord." 
     })
    
     output$plots <- renderPlot({
@@ -196,6 +227,39 @@ server <- function(input, output) {
             footer = NULL
         ))
     })
+    
+    observeEvent(input$forslag, {
+        #Lag tabeller:
+        t1 <- table(reactive_data()$V_1)
+        t2 <- table(reactive_data()$V_2)
+        t3 <- table(reactive_data()$V_3)
+        t4 <- table(reactive_data()$V_4)
+        t5 <- table(reactive_data()$V_5)
+        # Legg til 0 i de bokstavene som ikke er tilstede:
+        t1 <- utvid_tabell(t1)
+        t2 <- utvid_tabell(t2)
+        t3 <- utvid_tabell(t3)
+        t4 <- utvid_tabell(t4)
+        t5 <- utvid_tabell(t5)
+        
+        # Sample i tibble
+        ordtibb <- tibble(t1,t2,t3,t4,t5)
+        
+        # Kjør på hele tabell og hent ut max:
+        scored <- reactive_data() %>% rowwise() %>% mutate(ordscore = bokstav_funk(Word,t1,ordtibb))
+        ord <- toString(scored[which.max(scored$ordscore),] %>% select(Word))
+        showModal(modalDialog(
+          title = "Ordet er...",
+          ord,
+          easyClose = TRUE,
+          footer = NULL
+        ))
+  
+    })
+    
+    
+    
+    
 }
 
 # Run the application 
